@@ -25,14 +25,14 @@ class ProductStore {
   name: string = '';
   birthDate: string = '';
   search: string = '';
-  orderList: boolean[] = [];
+  loyaltyList: {date: string}[] = [];
 
   constructor() {
     makeAutoObservable(this);
 
     makePersistable(this, {
       name: 'ProductStore',
-      properties: ['name', 'avatarUrl', 'birthDate', 'orderList'],
+      properties: ['name', 'avatarUrl', 'birthDate', 'loyaltyList'],
       storage: AsyncStorage,
     });
   }
@@ -83,6 +83,32 @@ class ProductStore {
     }
   };
 
+  addLoyalty = (code: string) => {
+    if (code === 'bonus') {
+      const now = new Date();
+      const formattedDate = `${now.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'long',
+      })} | ${now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`;
+
+      this.loyaltyList.push({
+        date: formattedDate,
+      });
+      this.error = null;
+      return true;
+    } else {
+      this.error = 'Invalid code';
+    }
+    return undefined;
+  };
+
+  clearLoyalty = () => {
+    this.loyaltyList = [];
+  };
+
   removeFromCart = (productId: string) => {
     this.cart = this.cart.filter(item => item.id !== productId);
   };
@@ -106,13 +132,6 @@ class ProductStore {
   get cartTotal() {
     return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }
-
-  addOrderList = () => {
-    if (this.orderList.length === 5) {
-      this.orderList = [];
-    }
-    this.orderList.push(true);
-  };
 
   getItemQuantity = (productId: string): number => {
     const item = this.cart.find(item => item.id === productId);

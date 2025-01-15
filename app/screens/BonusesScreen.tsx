@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import React, {useState} from 'react';
@@ -14,8 +15,6 @@ import CustomButton from '../components/CustomButton.tsx';
 import {observer} from 'mobx-react';
 import {useStore} from '../stores/StoreContext.tsx';
 import {BORDER_RADIUS} from '../styles/constants.ts';
-import Clipboard from '@react-native-clipboard/clipboard';
-import QRCode from 'react-native-qrcode-svg';
 
 interface EventScreenProps {
   navigation: any;
@@ -23,7 +22,29 @@ interface EventScreenProps {
 
 const BonusesScreen: React.FC<EventScreenProps> = props => {
   const {productStore} = useStore();
-  const {orderList} = productStore;
+  const {addLoyalty, error, loyaltyList, clearLoyalty} = productStore;
+  const [isVisible, setIsVisible] = useState(false);
+  const [code, setCode] = useState('');
+
+  function showModal() {
+    setIsVisible(true);
+  }
+  function closeModal() {
+    setIsVisible(false);
+  }
+
+  function handleAddLoyalty(_code: string) {
+    const res = addLoyalty(code);
+    if (res) {
+      setCode('');
+      closeModal();
+    }
+  }
+
+  function handleClearLoyalty() {
+    clearLoyalty();
+    closeModal();
+  }
 
   function navToMenu() {
     props.navigation.navigate('Menu');
@@ -40,11 +61,14 @@ const BonusesScreen: React.FC<EventScreenProps> = props => {
             />
             <View style={styles.gridContainer}>
               {Array.from({length: 6}).map((_, index) => (
-                <View
+                <Pressable
+                  onPress={showModal}
                   key={index}
                   style={[
                     styles.gridItem,
-                    index < orderList.length && {backgroundColor: COLORS.black},
+                    index < loyaltyList.length && {
+                      backgroundColor: COLORS.black,
+                    },
                   ]}>
                   {index === 5 ? (
                     <Image
@@ -52,14 +76,14 @@ const BonusesScreen: React.FC<EventScreenProps> = props => {
                       style={styles.giftIcon}
                     />
                   ) : (
-                    index < orderList.length && (
+                    index < loyaltyList.length && (
                       <Image
                         source={require('../assets/check.png')}
                         style={styles.checkIcon}
                       />
                     )
                   )}
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>
@@ -73,11 +97,72 @@ const BonusesScreen: React.FC<EventScreenProps> = props => {
           onPress={navToMenu}
         />
       </SafeAreaView>
+      {isVisible && (
+        <ModalView
+          addLoyalty={handleAddLoyalty}
+          code={code}
+          setCode={setCode}
+          close={closeModal}
+          error={error}
+          isFull={loyaltyList.length === 5}
+          reset={handleClearLoyalty}
+        />
+      )}
     </MyImageBg>
   );
 };
 
 export default observer(BonusesScreen);
+
+const ModalView = ({
+  close,
+  code,
+  setCode,
+  addLoyalty,
+  error,
+  isFull,
+  reset,
+}: any) => {
+  return (
+    <View style={styles.modalWrapContainer}>
+      <View style={styles.modalContainer}>
+        {isFull ? (
+          <CustomButton
+            title={'Reset'}
+            onPress={reset}
+            containerStyle={styles.modalButton}
+          />
+        ) : (
+          <>
+            <View style={styles.inputContainer}>
+              <TextInput
+                autoCapitalize={'none'}
+                style={styles.input}
+                placeholder="Enter code"
+                placeholderTextColor={COLORS.grayText}
+                value={code}
+                onChangeText={setCode}
+              />
+            </View>
+            <Text style={styles.invalidCode}>
+              {error ? 'Invalid code' : ''}
+            </Text>
+            <CustomButton
+              onPress={() => addLoyalty(code)}
+              title={'Ok'}
+              containerStyle={styles.modalButton}
+            />
+            <CustomButton
+              title={'Cancel'}
+              onPress={close}
+              containerStyle={styles.modalButton}
+            />
+          </>
+        )}
+      </View>
+    </View>
+  );
+};
 
 const {width, height} = Dimensions.get('window');
 const styles = StyleSheet.create({
@@ -221,5 +306,23 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     tintColor: COLORS.primary,
+  },
+  modalWrapContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    position: 'absolute',
+    justifyContent: 'center',
+    zIndex: 99999,
+    elevation: 1000,
+    width: width,
+    height: height,
+    paddingHorizontal: 8,
+  },
+  modalContainer: {
+    backgroundColor: COLORS.primary,
+    padding: 20,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    marginBottom: 40,
   },
 });
